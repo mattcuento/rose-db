@@ -22,9 +22,9 @@ struct Frame {
 
 /// The main struct for the concurrent Buffer Pool Manager.
 #[derive(Debug)]
-pub struct ConcurrentBpm {
+pub struct ConcurrentBufferPoolManager {
     frames: Vec<RwLock<Frame>>,
-    page_table: RwLock<HashMap<PageId, FrameId>>,
+    pub page_table: RwLock<HashMap<PageId, FrameId>>,
     free_list: Mutex<Vec<FrameId>>,
     disk_manager: Arc<DiskManager>,
     pool_size: usize,
@@ -37,7 +37,7 @@ pub struct ConcurrentBpm {
 /// This guard holds a write lock on the frame for its entire lifetime.
 /// When dropped, it automatically unpins the page in the BPM.
 pub struct ConcurrentPageGuard<'a> {
-    bpm: &'a ConcurrentBpm,
+    buffer_pool_manager: &'a ConcurrentBufferPoolManager,
     page_id: PageId,
     frame_id: FrameId,
 }
@@ -53,7 +53,7 @@ impl<'a> Deref for ConcurrentPageGuard<'a> {
     fn deref(&self) -> &Self::Target {
         // Since the guard is alive, the page is pinned and won't be replaced.
         // We can safely lock and access the data.
-        let frame_guard = self.bpm.frames[self.frame_id].read().unwrap();
+        let frame_guard = self.buffer_pool_manager.frames[self.frame_id].read().unwrap();
         // The borrow checker is not smart enough to know that the guard's lifetime
         // is tied to the lock. We use a bit of unsafe to extend the lifetime.
         // This is safe because the PageGuard's lifetime ensures the lock is held.
@@ -63,27 +63,30 @@ impl<'a> Deref for ConcurrentPageGuard<'a> {
 
 impl<'a> DerefMut for ConcurrentPageGuard<'a> {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        let mut frame_guard = self.bpm.frames[self.frame_id].write().unwrap();
+        let mut frame_guard = self.buffer_pool_manager.frames[self.frame_id].write().unwrap();
         frame_guard.is_dirty = true;
+        // The borrow checker is not smart enough to know that the guard's lifetime
+        // is tied to the lock. We use a bit of unsafe to extend the lifetime.
+        // This is safe because the PageGuard's lifetime ensures the lock is held.
         unsafe { &mut *(&mut frame_guard.data as *mut _) }
     }
 }
 
 impl<'a> Drop for ConcurrentPageGuard<'a> {
     fn drop(&mut self) {
-        self.bpm.unpin_page(self.page_id).unwrap();
+        self.buffer_pool_manager.unpin_page(self.page_id).unwrap();
     }
 }
 
-impl BufferPoolManager for ConcurrentBpm {
-    fn fetch_page(&self, page_id: PageId) -> Result<Box<dyn PageGuard '_>, BpmError> {
+impl BufferPoolManager for ConcurrentBufferPoolManager {
+    fn fetch_page(&self, page_id: PageId) -> Result<Box<dyn PageGuard + '_>, BpmError> {
         let pt_read_lock = self.page_table.read().unwrap();
         if let Some(&frame_id) = pt_read_lock.get(&page_id) {
             // Page is in the buffer pool.
             let mut frame = self.frames[frame_id].write().unwrap();
             frame.pin_count += 1;
             frame.is_referenced = true;
-            return Ok(Box::new(ConcurrentPageGuard { bpm: self, page_id, frame_id }));
+            return Ok(Box::new(ConcurrentPageGuard { buffer_pool_manager: self, page_id, frame_id }));
         }
         drop(pt_read_lock);
 
@@ -110,10 +113,10 @@ impl BufferPoolManager for ConcurrentBpm {
         pt_write_lock.remove(&old_page_id);
         pt_write_lock.insert(page_id, frame_id);
 
-        Ok(Box::new(ConcurrentPageGuard { bpm: self, page_id, frame_id }))
+        Ok(Box::new(ConcurrentPageGuard { buffer_pool_manager: self, page_id, frame_id }))
     }
 
-    fn new_page(&self) -> Result<Box<dyn PageGuard '_>, BpmError> {
+    fn new_page(&self) -> Result<Box<dyn PageGuard + '_>, BpmError> {
         let frame_id = self.find_victim_frame()?;
         let mut frame = self.frames[frame_id].write().unwrap();
 
@@ -136,7 +139,7 @@ impl BufferPoolManager for ConcurrentBpm {
         pt_write_lock.remove(&old_page_id);
         pt_write_lock.insert(new_page_id, frame_id);
 
-        Ok(Box::new(ConcurrentPageGuard { bpm: self, page_id: new_page_id, frame_id }))
+        Ok(Box::new(ConcurrentPageGuard { buffer_pool_manager: self, page_id: new_page_id, frame_id }))
     }
 
     fn unpin_page(&self, page_id: PageId) -> Result<(), BpmError> {
@@ -175,8 +178,8 @@ impl BufferPoolManager for ConcurrentBpm {
     }
 }
 
-impl ConcurrentBpm {
-    /// Creates a new ConcurrentBpm.
+impl ConcurrentBufferPoolManager {
+    /// Creates a new ConcurrentBufferPoolManager.
     pub fn new(pool_size: usize, disk_manager: Arc<DiskManager>) -> Self {
         let mut frames = Vec::with_capacity(pool_size);
         let mut free_list = Vec::with_capacity(pool_size);
@@ -212,20 +215,23 @@ impl ConcurrentBpm {
 
         // 2. If free list is empty, run the CLOCK algorithm.
         let mut clock_hand = self.clock_hand.lock().unwrap();
-        for _ in 0..(2 * self.pool_size) { // Search twice to avoid infinite loop
+        for _ in 0..(2 * self.pool_size) {
+            // Search twice to avoid infinite loop
             let frame_id = *clock_hand;
-            let mut frame = self.frames[frame_id].write().unwrap();
 
-            if frame.pin_count == 0 {
-                if frame.is_referenced {
-                    // Give it a second chance
-                    frame.is_referenced = false;
-                } else {
-                    // Found a victim
-                    return Ok(frame_id);
+            // Try to lock the frame. If it's locked, skip it and try the next one.
+            if let Ok(mut frame) = self.frames[frame_id].try_write() {
+                if frame.pin_count == 0 {
+                    if frame.is_referenced {
+                        // Give it a second chance.
+                        frame.is_referenced = false;
+                    } else {
+                        // Found a victim. Advance the clock hand for the next search.
+                        *clock_hand = (*clock_hand + 1) % self.pool_size;
+                        return Ok(frame_id);
+                    }
                 }
             }
-
             *clock_hand = (*clock_hand + 1) % self.pool_size;
         }
 

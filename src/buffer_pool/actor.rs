@@ -325,15 +325,17 @@ impl BpmActorState {
 
         for _ in 0..(2 * self.pool_size) {
             let frame_id = self.clock_hand;
-            
+
             if self.frames[frame_id].pin_count == 0 {
                 if self.frames[frame_id].is_referenced {
                     self.frames[frame_id].is_referenced = false;
                 } else {
+                    // Found a victim. Advance clock hand for next search.
+                    self.clock_hand = (self.clock_hand + 1) % self.pool_size;
                     return Ok(frame_id);
                 }
             }
-            
+
             self.clock_hand = (self.clock_hand + 1) % self.pool_size;
         }
 
