@@ -1,5 +1,5 @@
 
-use crate::buffer_pool::api::PageId;
+use crate::api::PageId;
 
 /// The header of a page.
 #[derive(Debug, Clone, Copy)]

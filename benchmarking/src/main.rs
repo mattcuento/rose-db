@@ -1,9 +1,9 @@
 
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use buffer_pool_manager::buffer_pool::api::BufferPoolManager;
-use buffer_pool_manager::buffer_pool::concurrent::ConcurrentBufferPoolManager;
-use buffer_pool_manager::buffer_pool::disk_manager::DiskManager;
+use common::api::BufferPoolManager;
+use concurrent::ConcurrentBufferPoolManager;
+use common::disk_manager::DiskManager;
 
 enum BenchmarkType {
     Read,

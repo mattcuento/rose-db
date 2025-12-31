@@ -1,8 +1,8 @@
 
 //! The fine-grained locking concurrent implementation of the Buffer Pool Manager.
 
-use super::api::{BufferPoolManager, BpmError, PageGuard, PageId, PAGE_SIZE};
-use super::disk_manager::DiskManager;
+use common::api::{BufferPoolManager, BpmError, PageGuard, PageId, PAGE_SIZE};
+use common::disk_manager::DiskManager;
 use std::collections::HashMap;
 use std::ops::{Deref, DerefMut};
 use std::sync::{Arc, Mutex, RwLock};
