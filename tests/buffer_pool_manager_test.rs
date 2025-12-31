@@ -8,7 +8,7 @@ use std::thread;
 #[test]
 fn test_bpm_new_page() {
     let db_file = "test_bpm_new_page.db";
-    let disk_manager = Arc::new(DiskManager::new(db_file).unwrap());
+    let disk_manager = Arc::new(DiskManager::new(db_file, false).unwrap());
     let bpm = ConcurrentBufferPoolManager::new(10, disk_manager);
 
     let page = bpm.new_page().unwrap();
@@ -20,7 +20,7 @@ fn test_bpm_new_page() {
 #[test]
 fn test_bpm_fetch_page() {
     let db_file = "test_bpm_fetch_page.db";
-    let disk_manager = Arc::new(DiskManager::new(db_file).unwrap());
+    let disk_manager = Arc::new(DiskManager::new(db_file, false).unwrap());
     let bpm = ConcurrentBufferPoolManager::new(10, disk_manager);
 
     let page = bpm.new_page().unwrap();
@@ -36,7 +36,7 @@ fn test_bpm_fetch_page() {
 #[test]
 fn test_bpm_unpin_page() {
     let db_file = "test_bpm_unpin_page.db";
-    let disk_manager = Arc::new(DiskManager::new(db_file).unwrap());
+    let disk_manager = Arc::new(DiskManager::new(db_file, false).unwrap());
     let bpm = ConcurrentBufferPoolManager::new(3, disk_manager); // Small buffer pool
 
     let page = bpm.new_page().unwrap();
@@ -65,7 +65,7 @@ fn test_bpm_unpin_page() {
 #[test]
 fn test_bpm_clock_replacement_predictable() {
     let db_file = "test_bpm_clock_replacement_predictable.db";
-    let disk_manager = Arc::new(DiskManager::new(db_file).unwrap());
+    let disk_manager = Arc::new(DiskManager::new(db_file, false).unwrap());
     let bpm = ConcurrentBufferPoolManager::new(3, disk_manager);
 
     // Create and unpin P0, P1, P2.
@@ -115,7 +115,7 @@ fn test_bpm_clock_replacement_predictable() {
 #[test]
 fn test_bpm_clock_replacement_minimal() {
     let db_file = "test_bpm_clock_replacement_minimal.db";
-    let disk_manager = Arc::new(DiskManager::new(db_file).unwrap());
+    let disk_manager = Arc::new(DiskManager::new(db_file, false).unwrap());
     let bpm = ConcurrentBufferPoolManager::new(1, disk_manager); // Buffer pool size 1
 
     // Create page0 and unpin it.
@@ -142,7 +142,7 @@ fn test_bpm_clock_replacement_minimal() {
 #[test]
 fn test_bpm_clock_replacement_minimal_v2() {
     let db_file = "test_bpm_clock_replacement_minimal_v2.db";
-    let disk_manager = Arc::new(DiskManager::new(db_file).unwrap());
+    let disk_manager = Arc::new(DiskManager::new(db_file, false).unwrap());
     let bpm = ConcurrentBufferPoolManager::new(2, disk_manager); // Pool size 2
 
     // Create page0 and page1 and unpin them.
@@ -185,7 +185,7 @@ fn test_bpm_clock_replacement_minimal_v2() {
 #[test]
 fn test_bpm_multithreaded_many_threads_no_contention() {
     let db_file = "test_bpm_multithreaded_many_threads_no_contention.db";
-    let disk_manager = Arc::new(DiskManager::new(db_file).unwrap());
+    let disk_manager = Arc::new(DiskManager::new(db_file, false).unwrap());
     let bpm = Arc::new(ConcurrentBufferPoolManager::new(10, disk_manager));
     let mut threads = vec![];
     let num_threads = 5;

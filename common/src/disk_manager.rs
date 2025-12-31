@@ -17,12 +17,39 @@ pub struct DiskManager {
 
 impl DiskManager {
     /// Creates a new DiskManager for a given database file.
-    pub fn new(db_file_path: &str) -> io::Result<Self> {
-        let file = OpenOptions::new()
-            .read(true)
-            .write(true)
-            .create(true)
-            .open(db_file_path)?;
+    pub fn new(db_file_path: &str, direct_io: bool) -> io::Result<Self> {
+        let mut options = OpenOptions::new();
+        options.read(true).write(true).create(true);
+
+        if direct_io {
+            #[cfg(target_os = "linux")]
+            {
+                use std::os::unix::fs::OpenOptionsExt;
+                options.custom_flags(libc::O_DIRECT);
+            }
+            #[cfg(target_os = "windows")]
+            {
+                use std::os::windows::fs::OpenOptionsExt;
+                // FILE_FLAG_NO_BUFFERING
+                options.flags(0x20000000);
+            }
+        }
+
+        let file = options.open(db_file_path)?;
+
+        if direct_io {
+            #[cfg(target_os = "macos")]
+            {
+                use std::os::unix::io::AsRawFd;
+                let fd = file.as_raw_fd();
+                unsafe {
+                    if libc::fcntl(fd, libc::F_NOCACHE, 1) == -1 {
+                        return Err(io::Error::last_os_error());
+                    }
+                }
+            }
+        }
+
         let metadata = file.metadata()?;
         let next_page_id = (metadata.len() / PAGE_SIZE as u64) as PageId;
 

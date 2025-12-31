@@ -7,3 +7,4 @@ edition = "2021"
 common = { path = "../common" }
 concurrent = { path = "../concurrent" }
 actor = { path = "../actor" }
+clap = { version = "4.0", features = ["derive"] }

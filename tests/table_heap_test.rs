@@ -10,7 +10,7 @@ use std::fs;
 #[test]
 fn test_table_heap_insert_get() {
     let db_file = "test_table_heap_insert_get.db";
-    let disk_manager = Arc::new(DiskManager::new(db_file).unwrap());
+    let disk_manager = Arc::new(DiskManager::new(db_file, false).unwrap());
     let bpm = Arc::new(ConcurrentBufferPoolManager::new(10, disk_manager));
 
     let schema = Schema {

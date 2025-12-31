@@ -9,7 +9,7 @@ use std::thread;
 #[test]
 fn test_actor_bpm_new_page() {
     let db_file = "test_actor_bpm_new_page.db";
-    let disk_manager = Arc::new(DiskManager::new(db_file).unwrap());
+    let disk_manager = Arc::new(DiskManager::new(db_file, false).unwrap());
     let bpm = ActorBpm::new(10, disk_manager);
 
     let page = bpm.new_page().unwrap();
@@ -22,7 +22,7 @@ fn test_actor_bpm_new_page() {
 #[test]
 fn test_actor_bpm_fetch_page() {
     let db_file = "test_actor_bpm_fetch_page.db";
-    let disk_manager = Arc::new(DiskManager::new(db_file).unwrap());
+    let disk_manager = Arc::new(DiskManager::new(db_file, false).unwrap());
     let bpm = ActorBpm::new(10, disk_manager);
 
     let page_id = {
@@ -42,7 +42,7 @@ fn test_actor_bpm_fetch_page() {
 #[test]
 fn test_actor_bpm_unpin_page() {
     let db_file = "test_actor_bpm_unpin_page.db";
-    let disk_manager = Arc::new(DiskManager::new(db_file).unwrap());
+    let disk_manager = Arc::new(DiskManager::new(db_file, false).unwrap());
     let bpm = ActorBpm::new(3, disk_manager);
 
     // Pin page 0
@@ -78,7 +78,7 @@ fn test_actor_bpm_unpin_page() {
 // #[test]
 // fn test_actor_bpm_clock_replacement_blackbox() {
 //     let db_file = "test_actor_bpm_clock_replacement_blackbox.db";
-//     let disk_manager = Arc::new(DiskManager::new(db_file).unwrap());
+//     let disk_manager = Arc::new(DiskManager::new(db_file, false).unwrap());
 //     let bpm = ActorBpm::new(3, disk_manager);
 
 //     // Create and unpin P0, P1, P2.
@@ -118,7 +118,7 @@ fn test_actor_bpm_unpin_page() {
 #[test]
 fn test_actor_bpm_multithreaded_no_contention() {
     let db_file = "test_actor_bpm_multithreaded_no_contention.db";
-    let disk_manager = Arc::new(DiskManager::new(db_file).unwrap());
+    let disk_manager = Arc::new(DiskManager::new(db_file, false).unwrap());
     // The Arc allows the BPM to be shared between threads.
     let bpm = Arc::new(ActorBpm::new(10, disk_manager));
     let mut threads = vec![];

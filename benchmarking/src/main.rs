@@ -1,9 +1,19 @@
 
 use std::sync::Arc;
 use std::time::{Duration, Instant};
+use actor::ActorBpm;
 use common::api::BufferPoolManager;
 use concurrent::ConcurrentBufferPoolManager;
 use common::disk_manager::DiskManager;
+use clap::Parser;
+
+#[derive(Parser, Debug)]
+#[command(version, about, long_about = None)]
+struct Args {
+    /// Enable direct I/O
+    #[arg(short, long)]
+    direct_io: bool,
+}
 
 enum BenchmarkType {
     Read,
@@ -16,10 +26,12 @@ struct BenchmarkResult {
 }
 
 fn main() {
+    let args = Args::parse();
     println!("Setting up Buffer Pool Manager implementations for benchmarking.");
+    println!("Direct I/O enabled: {}", args.direct_io);
 
     let db_file = "benchmark.db";
-    let disk_manager = match DiskManager::new(db_file) {
+    let disk_manager = match DiskManager::new(db_file, args.direct_io) {
         Ok(dm) => Arc::new(dm),
         Err(e) => {
             eprintln!("Failed to create disk manager: {}", e);
@@ -28,16 +40,23 @@ fn main() {
     };
 
     let concurrent_bpm = Arc::new(ConcurrentBufferPoolManager::new(100, disk_manager.clone()));
+    let actor_bpm = Arc::new(ActorBpm::new(100, disk_manager.clone()));
 
-    let results = BenchmarkResult {
+    let concurrent_impl_results = BenchmarkResult {
         concurrent_write: run_benchmark(concurrent_bpm.clone(), BenchmarkType::Write),
         concurrent_read: run_benchmark(concurrent_bpm, BenchmarkType::Read),
+    };
+
+    let actor_impl_results = BenchmarkResult {
+        concurrent_write: run_benchmark(actor_bpm.clone(), BenchmarkType::Write),
+        concurrent_read: run_benchmark(actor_bpm, BenchmarkType::Read),
     };
 
     println!("\n--- Benchmark Results ---");
     println!("| Implementation              | Write Time      | Read Time       |");
     println!("|-----------------------------|-----------------|-----------------|");
-    println!("| ConcurrentBufferPoolManager | {:<15?} | {:<15?} |", results.concurrent_write, results.concurrent_read);
+    println!("| ConcurrentBufferPoolManager | {:<15?} | {:<15?} |", concurrent_impl_results.concurrent_write, concurrent_impl_results.concurrent_read);
+    println!("| ActorBufferPoolManager      | {:<15?} | {:<15?} |", actor_impl_results.concurrent_write, actor_impl_results.concurrent_read);
 
     std::fs::remove_file(db_file).unwrap();
 }
