@@ -1,8 +1,8 @@
 //! Defines the TableHeap structure which manages a collection of pages that stores the rows of a table.
 
-use crate::api::{BufferPoolManager, PageId, INVALID_PAGE_ID, PAGE_SIZE};
+use buffer_pool_manager::api::{BufferPoolManager, PageId, INVALID_PAGE_ID, PAGE_SIZE};
 use crate::tuple::{Tuple, Schema};
-use crate::page::{SlottedPage, PageType};
+use buffer_pool_manager::page::{SlottedPage, PageType};
 use std::sync::Arc;
 use std::ops::DerefMut;
 

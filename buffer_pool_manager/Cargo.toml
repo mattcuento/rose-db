@@ -1,0 +1,12 @@
+[package]
+name = "buffer_pool_manager"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+libc = "0.2"
+
+[[bench]]
+name = "buffer_pool_manager"
+path = "benches/buffer_pool_manager_benchmark.rs"
+harness = false

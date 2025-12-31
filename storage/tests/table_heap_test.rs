@@ -1,11 +1,10 @@
 
-use buffer_pool_manager::buffer_pool::api::BufferPoolManager;
-use buffer_pool_manager::buffer_pool::concurrent::ConcurrentBufferPoolManager;
-use buffer_pool_manager::buffer_pool::disk_manager::DiskManager;
-use buffer_pool_manager::table::{TableHeap, RowId};
-use buffer_pool_manager::tuple::{Tuple, Schema, Column, Type, Value};
+use buffer_pool_manager::disk_manager::DiskManager;
 use std::sync::Arc;
 use std::fs;
+use buffer_pool_manager::concurrent::ConcurrentBufferPoolManager;
+use storage::table::TableHeap;
+use storage::tuple::{Column, Schema, Tuple, Type, Value};
 
 #[test]
 fn test_table_heap_insert_get() {

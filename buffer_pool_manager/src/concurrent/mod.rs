@@ -1,8 +1,8 @@
 
 //! The fine-grained locking concurrent_buffer_pool_manager implementation of the Buffer Pool Manager.
 
-use common::api::{BufferPoolManager, BpmError, PageGuard, PageId, PAGE_SIZE};
-use common::disk_manager::DiskManager;
+use super::api::{BufferPoolManager, BpmError, PageGuard, PageId, PAGE_SIZE};
+use super::disk_manager::DiskManager;
 use std::collections::HashMap;
 use std::ops::{Deref, DerefMut};
 use std::sync::{Arc, Mutex, RwLock};
@@ -24,7 +24,7 @@ struct Frame {
 #[derive(Debug)]
 pub struct ConcurrentBufferPoolManager {
     frames: Vec<RwLock<Frame>>,
-    pub page_table: RwLock<HashMap<PageId, FrameId>>,
+    page_table: RwLock<HashMap<PageId, FrameId>>,
     free_list: Mutex<Vec<FrameId>>,
     disk_manager: Arc<DiskManager>,
     pool_size: usize,
@@ -36,6 +36,7 @@ pub struct ConcurrentBufferPoolManager {
 ///
 /// This guard holds a write lock on the frame for its entire lifetime.
 /// When dropped, it automatically unpins the page in the BPM.
+#[derive(Debug)]
 pub struct ConcurrentPageGuard<'a> {
     buffer_pool_manager: &'a ConcurrentBufferPoolManager,
     page_id: PageId,
@@ -236,5 +237,9 @@ impl ConcurrentBufferPoolManager {
         }
 
         Err(BpmError::NoFreeFrames)
+    }
+
+    pub fn contains_page(&self, page_id: PageId) -> bool {
+        self.page_table.read().unwrap().contains_key(&page_id)
     }
 }

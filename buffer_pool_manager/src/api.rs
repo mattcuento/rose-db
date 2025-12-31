@@ -1,6 +1,7 @@
 
 //! Defines the common API for all buffer pool manager implementations.
 use std::ops::{Deref, DerefMut};
+use std::fmt::Debug;
 
 
 /// A unique identifier for a page in the database.
@@ -26,7 +27,7 @@ pub enum BpmError {
 /// This guard provides mutable access to the page's byte data. When the guard
 /// is dropped, it automatically informs the buffer pool manager to unpin the page,
 /// allowing it to be considered for eviction.
-pub trait PageGuard: Deref<Target = [u8]> + DerefMut {
+pub trait PageGuard: Deref<Target = [u8]> + DerefMut + Debug {
     /// Returns the ID of the page being held.
     fn page_id(&self) -> PageId;
 }

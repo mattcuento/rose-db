@@ -1,8 +1,8 @@
 
 //! The actor_buffer_pool_manager-based implementation of the Buffer Pool Manager.
 
-use common::api::{BufferPoolManager, BpmError, PageGuard, PageId, PAGE_SIZE};
-use common::disk_manager::DiskManager;
+use super::api::{BufferPoolManager, BpmError, PageGuard, PageId, PAGE_SIZE};
+use super::disk_manager::DiskManager;
 use std::collections::HashMap;
 use std::ops::{Deref, DerefMut};
 use std::sync::mpsc::{self, Sender};
@@ -47,6 +47,7 @@ pub struct ActorBufferPoolManager {
 
 /// A page guard for the actor_buffer_pool_manager BPM.
 /// It owns the page data and sends an unpin message on drop.
+#[derive(Debug)]
 pub struct ActorPageGuard {
     page_id: PageId,
     data: Box<[u8; PAGE_SIZE]>,
