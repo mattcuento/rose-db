@@ -1,18 +1,25 @@
+
 use std::sync::Arc;
+use std::time::{Duration, Instant};
+use buffer_pool_manager::buffer_pool::api::BufferPoolManager;
+use buffer_pool_manager::buffer_pool::concurrent::ConcurrentBufferPoolManager;
+use buffer_pool_manager::buffer_pool::disk_manager::DiskManager;
 
-// Import the new modules
-mod buffer_pool;
+enum BenchmarkType {
+    Read,
+    Write,
+}
 
-
-use buffer_pool::actor::ActorBpm;
-use buffer_pool::concurrent::ConcurrentBpm;
-use buffer_pool::disk_manager::DiskManager;
+struct BenchmarkResult {
+    concurrent_write: Duration,
+    concurrent_read: Duration,
+}
 
 fn main() {
     println!("Setting up Buffer Pool Manager implementations for benchmarking.");
 
-    // Initialize the disk manager
-    let disk_manager = match DiskManager::new("database.db") {
+    let db_file = "benchmark.db";
+    let disk_manager = match DiskManager::new(db_file) {
         Ok(dm) => Arc::new(dm),
         Err(e) => {
             eprintln!("Failed to create disk manager: {}", e);
@@ -20,10 +27,57 @@ fn main() {
         }
     };
 
-    // Instantiate the two BPM implementations
-    // Note: The `new` functions will need to be implemented fully for this to work.
-    let _concurrent_bpm = ConcurrentBpm::new(100, disk_manager.clone());
-    let _actor_bpm = ActorBpm::new(100, disk_manager);
+    let concurrent_bpm = Arc::new(ConcurrentBufferPoolManager::new(100, disk_manager.clone()));
 
-    println!("Skeletons created. Next steps would be to implement the `todo!()` sections and add benchmark logic.");
+    let results = BenchmarkResult {
+        concurrent_write: run_benchmark(concurrent_bpm.clone(), BenchmarkType::Write),
+        concurrent_read: run_benchmark(concurrent_bpm, BenchmarkType::Read),
+    };
+
+    println!("\n--- Benchmark Results ---");
+    println!("| Implementation              | Write Time      | Read Time       |");
+    println!("|-----------------------------|-----------------|-----------------|");
+    println!("| ConcurrentBufferPoolManager | {:<15?} | {:<15?} |", results.concurrent_write, results.concurrent_read);
+
+    std::fs::remove_file(db_file).unwrap();
+}
+
+fn run_benchmark(bpm: Arc<dyn BufferPoolManager>, benchmark_type: BenchmarkType) -> Duration {
+    const NUM_PAGES: usize = 1000;
+
+    match benchmark_type {
+        BenchmarkType::Write => {
+            let start = Instant::now();
+            for _ in 0..NUM_PAGES {
+                if let Err(e) = bpm.new_page() {
+                    eprintln!("Failed to create new page: {:?}", e);
+                    return Duration::ZERO;
+                }
+            }
+            start.elapsed()
+        }
+        BenchmarkType::Read => {
+            let mut page_ids = Vec::new();
+            for _ in 0..NUM_PAGES {
+                match bpm.new_page() {
+                    Ok(guard) => {
+                        page_ids.push(guard.page_id());
+                    }
+                    Err(e) => {
+                        eprintln!("Failed to create new page: {:?}", e);
+                        return Duration::ZERO;
+                    }
+                }
+            }
+            bpm.flush_all_pages().unwrap();
+
+            let start = Instant::now();
+            for &page_id in &page_ids {
+                if let Err(e) = bpm.fetch_page(page_id) {
+                    eprintln!("Failed to fetch page {}: {:?}", page_id, e);
+                }
+            }
+            start.elapsed()
+        }
+    }
 }

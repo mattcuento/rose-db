@@ -6,6 +6,9 @@ use std::ops::{Deref, DerefMut};
 /// A unique identifier for a page in the database.
 pub type PageId = usize;
 
+/// A constant to represent an invalid page ID.
+pub const INVALID_PAGE_ID: PageId = 0;
+
 /// The size of a single page in bytes.
 pub const PAGE_SIZE: usize = 4096;
 
