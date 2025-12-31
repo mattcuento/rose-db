@@ -1,6 +1,6 @@
 
 use buffer_pool_manager::buffer_pool::api::BufferPoolManager;
-use buffer_pool_manager::buffer_pool::actor::ActorBpm;
+use buffer_pool_manager::buffer_pool::actor::ActorBufferPoolManager;
 use buffer_pool_manager::buffer_pool::disk_manager::DiskManager;
 use std::fs;
 use std::sync::Arc;
@@ -10,7 +10,7 @@ use std::thread;
 fn test_actor_bpm_new_page() {
     let db_file = "test_actor_bpm_new_page.db";
     let disk_manager = Arc::new(DiskManager::new(db_file, false).unwrap());
-    let bpm = ActorBpm::new(10, disk_manager);
+    let bpm = ActorBufferPoolManager::new(10, disk_manager);
 
     let page = bpm.new_page().unwrap();
     // The first page allocated by the disk manager has ID 0.
@@ -23,7 +23,7 @@ fn test_actor_bpm_new_page() {
 fn test_actor_bpm_fetch_page() {
     let db_file = "test_actor_bpm_fetch_page.db";
     let disk_manager = Arc::new(DiskManager::new(db_file, false).unwrap());
-    let bpm = ActorBpm::new(10, disk_manager);
+    let bpm = ActorBufferPoolManager::new(10, disk_manager);
 
     let page_id = {
         // Create a page and get its ID
@@ -43,7 +43,7 @@ fn test_actor_bpm_fetch_page() {
 fn test_actor_bpm_unpin_page() {
     let db_file = "test_actor_bpm_unpin_page.db";
     let disk_manager = Arc::new(DiskManager::new(db_file, false).unwrap());
-    let bpm = ActorBpm::new(3, disk_manager);
+    let bpm = ActorBufferPoolManager::new(3, disk_manager);
 
     // Pin page 0
     let page0 = bpm.new_page().unwrap();
@@ -79,7 +79,7 @@ fn test_actor_bpm_unpin_page() {
 // fn test_actor_bpm_clock_replacement_blackbox() {
 //     let db_file = "test_actor_bpm_clock_replacement_blackbox.db";
 //     let disk_manager = Arc::new(DiskManager::new(db_file, false).unwrap());
-//     let bpm = ActorBpm::new(3, disk_manager);
+//     let bpm = ActorBufferPoolManager::new(3, disk_manager);
 
 //     // Create and unpin P0, P1, P2.
 //     // As new pages, they are all dirty.
@@ -90,7 +90,7 @@ fn test_actor_bpm_unpin_page() {
 //     // Flush them all to disk, making them non-dirty.
 //     bpm.flush_all_pages().unwrap();
 
-//     // Access P0 and P2. This will set their 'is_referenced' flag inside the actor.
+//     // Access P0 and P2. This will set their 'is_referenced' flag inside the actor_buffer_pool_manager.
 //     drop(bpm.fetch_page(id0));
 //     drop(bpm.fetch_page(id2));
     
@@ -120,7 +120,7 @@ fn test_actor_bpm_multithreaded_no_contention() {
     let db_file = "test_actor_bpm_multithreaded_no_contention.db";
     let disk_manager = Arc::new(DiskManager::new(db_file, false).unwrap());
     // The Arc allows the BPM to be shared between threads.
-    let bpm = Arc::new(ActorBpm::new(10, disk_manager));
+    let bpm = Arc::new(ActorBufferPoolManager::new(10, disk_manager));
     let mut threads = vec![];
     let num_threads = 5;
 

@@ -3,7 +3,7 @@
 version = 4
 
 [[package]]
-name = "actor"
+name = "actor_buffer_pool_manager"
 version = "0.1.0"
 dependencies = [
  "common",
@@ -63,10 +63,10 @@ dependencies = [
 name = "benchmarking"
 version = "0.1.0"
 dependencies = [
- "actor",
+ "actor_buffer_pool_manager",
  "clap",
  "common",
- "concurrent",
+ "concurrent_buffer_pool_manager",
 ]
 
 [[package]]
@@ -123,7 +123,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "concurrent"
+name = "concurrent_buffer_pool_manager"
 version = "0.1.0"
 dependencies = [
  "common",

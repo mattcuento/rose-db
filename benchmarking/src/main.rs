@@ -1,10 +1,10 @@
 
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use actor::ActorBpm;
+use actor_buffer_pool_manager::ActorBufferPoolManager;
 use common::api::BufferPoolManager;
-use concurrent::ConcurrentBufferPoolManager;
 use common::disk_manager::DiskManager;
+use concurrent_buffer_pool_manager::ConcurrentBufferPoolManager;
 use clap::Parser;
 
 #[derive(Parser, Debug)]
@@ -40,7 +40,7 @@ fn main() {
     };
 
     let concurrent_bpm = Arc::new(ConcurrentBufferPoolManager::new(100, disk_manager.clone()));
-    let actor_bpm = Arc::new(ActorBpm::new(100, disk_manager.clone()));
+    let actor_bpm = Arc::new(ActorBufferPoolManager::new(100, disk_manager.clone()));
 
     let concurrent_impl_results = BenchmarkResult {
         concurrent_write: run_benchmark(concurrent_bpm.clone(), BenchmarkType::Write),

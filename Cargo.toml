@@ -2,7 +2,7 @@
 resolver = "2"
 members = [
     "common",
-    "concurrent",
-    "actor",
+    "concurrent_buffer_pool_manager",
+    "actor_buffer_pool_manager",
     "benchmarking",
 ]

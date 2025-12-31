@@ -1,5 +1,5 @@
 
-//! The actor-based implementation of the Buffer Pool Manager.
+//! The actor_buffer_pool_manager-based implementation of the Buffer Pool Manager.
 
 use common::api::{BufferPoolManager, BpmError, PageGuard, PageId, PAGE_SIZE};
 use common::disk_manager::DiskManager;
@@ -14,7 +14,7 @@ type FrameId = usize;
 // A responder channel to send a result back to the calling thread.
 type Responder<T> = mpsc::Sender<Result<T, BpmError>>;
 
-/// Defines the messages that can be sent to the BPM actor.
+/// Defines the messages that can be sent to the BPM actor_buffer_pool_manager.
 enum BpmMessage {
     FetchPage {
         page_id: PageId,
@@ -41,11 +41,11 @@ enum BpmMessage {
 /// The handle for the Actor-based Buffer Pool Manager.
 /// This is the public-facing struct that clients interact with.
 #[derive(Debug)]
-pub struct ActorBpm {
+pub struct ActorBufferPoolManager {
     sender: Sender<BpmMessage>,
 }
 
-/// A page guard for the actor BPM.
+/// A page guard for the actor_buffer_pool_manager BPM.
 /// It owns the page data and sends an unpin message on drop.
 pub struct ActorPageGuard {
     page_id: PageId,
@@ -88,7 +88,7 @@ impl Drop for ActorPageGuard {
     }
 }
 
-impl BufferPoolManager for ActorBpm {
+impl BufferPoolManager for ActorBufferPoolManager {
     fn fetch_page(&self, page_id: PageId) -> Result<Box<dyn PageGuard + '_>, BpmError> {
         let (tx, rx) = mpsc::channel();
         self.sender.send(BpmMessage::FetchPage { page_id, responder: tx }).unwrap();
@@ -132,14 +132,14 @@ impl BufferPoolManager for ActorBpm {
     }
 }
 
-impl Drop for ActorBpm {
+impl Drop for ActorBufferPoolManager {
     fn drop(&mut self) {
         let _ = self.sender.send(BpmMessage::Stop);
     }
 }
 
-impl ActorBpm {
-    /// Creates a new ActorBpm and spawns the actor thread.
+impl ActorBufferPoolManager {
+    /// Creates a new ActorBufferPoolManager and spawns the actor_buffer_pool_manager thread.
     pub fn new(pool_size: usize, disk_manager: Arc<DiskManager>) -> Self {
         let (sender, receiver) = mpsc::channel();
         let actor = BpmActorState::new(pool_size, disk_manager, receiver);
@@ -160,7 +160,7 @@ struct Frame {
     is_referenced: bool,
 }
 
-/// This struct holds the actual state and runs on the dedicated actor thread.
+/// This struct holds the actual state and runs on the dedicated actor_buffer_pool_manager thread.
 /// It does not use any internal locks.
 struct BpmActorState {
     frames: Vec<Frame>,
@@ -201,7 +201,7 @@ impl BpmActorState {
         }
     }
 
-    /// The main loop for the actor.
+    /// The main loop for the actor_buffer_pool_manager.
     fn run(mut self) {
         while let Ok(msg) = self.receiver.recv() {
             match msg {

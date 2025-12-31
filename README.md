@@ -105,7 +105,7 @@ pub struct BpmHandle {
     sender: Sender<BpmMessage>,
 }
 
-// The actor loop
+// The actor_buffer_pool_manager loop
 async fn bpm_actor_loop(mut receiver: Receiver<BpmMessage>) {
     // These data structures are NOT wrapped in Mutexes because
     // this single thread is the only thing that can touch them.

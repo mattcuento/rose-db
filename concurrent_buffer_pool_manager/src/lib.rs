@@ -1,5 +1,5 @@
 
-//! The fine-grained locking concurrent implementation of the Buffer Pool Manager.
+//! The fine-grained locking concurrent_buffer_pool_manager implementation of the Buffer Pool Manager.
 
 use common::api::{BufferPoolManager, BpmError, PageGuard, PageId, PAGE_SIZE};
 use common::disk_manager::DiskManager;
@@ -20,7 +20,7 @@ struct Frame {
     is_referenced: bool, // For the CLOCK replacer
 }
 
-/// The main struct for the concurrent Buffer Pool Manager.
+/// The main struct for the concurrent_buffer_pool_manager Buffer Pool Manager.
 #[derive(Debug)]
 pub struct ConcurrentBufferPoolManager {
     frames: Vec<RwLock<Frame>>,
@@ -32,7 +32,7 @@ pub struct ConcurrentBufferPoolManager {
     clock_hand: Mutex<usize>,
 }
 
-/// A page guard for the concurrent BPM.
+/// A page guard for the concurrent_buffer_pool_manager BPM.
 ///
 /// This guard holds a write lock on the frame for its entire lifetime.
 /// When dropped, it automatically unpins the page in the BPM.

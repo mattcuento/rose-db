@@ -8,7 +8,7 @@ use std::sync::Mutex;
 
 /// Manages reading and writing pages to a file on disk.
 /// This implementation uses positioned I/O (`read_at`, `write_at`) to allow
-/// multiple concurrent reads and writes without a global lock on the file.
+/// multiple concurrent_buffer_pool_manager reads and writes without a global lock on the file.
 #[derive(Debug)]
 pub struct DiskManager {
     db_file: File, // No Mutex needed for I/O, only for allocating new pages

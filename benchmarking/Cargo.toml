@@ -5,6 +5,6 @@ edition = "2021"
 
 [dependencies]
 common = { path = "../common" }
-concurrent = { path = "../concurrent" }
-actor = { path = "../actor" }
+actor_buffer_pool_manager = { path = "../actor_buffer_pool_manager" }
+concurrent_buffer_pool_manager = { path = "../concurrent_buffer_pool_manager" }
 clap = { version = "4.0", features = ["derive"] }
