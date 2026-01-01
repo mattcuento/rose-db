@@ -1,113 +1,103 @@
-
+use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use std::sync::Arc;
-use std::time::{Duration, Instant};
 use buffer_pool_manager::actor::ActorBufferPoolManager;
 use buffer_pool_manager::api::BufferPoolManager;
 use buffer_pool_manager::disk_manager::DiskManager;
 use buffer_pool_manager::concurrent::ConcurrentBufferPoolManager;
+use std::fs;
 
-enum BenchmarkType {
-    Read,
-    Write,
+const POOL_SIZE: usize = 100;
+const NUM_PAGES: usize = 1000;
+
+// Helper to create a DiskManager and cleanup the db file at the end
+fn setup_disk_manager(db_file: &str, use_direct_io: bool) -> Arc<DiskManager> {
+    // Ensure cleanup of previous run if any
+    let _ = fs::remove_file(db_file); 
+    let dm = Arc::new(DiskManager::new(db_file, use_direct_io).unwrap());
+    dm
 }
 
-struct BenchmarkResult {
-    concurrent_write: Duration,
-    concurrent_read: Duration,
-}
+// Benchmark function for writing new pages
+fn bench_write_pages<B: BufferPoolManager + 'static>(
+    c: &mut Criterion,
+    id: &str,
+    bpm_factory: impl Fn(Arc<DiskManager>, usize) -> Arc<B>,
+    use_direct_io: bool,
+) {
+    let mut group = c.benchmark_group(format!("Write Pages - {}", id));
+    group.sample_size(10); // Smaller sample size for quick iteration during development
 
-fn main() {
-    println!("Setting up Buffer Pool Manager implementations for benchmarking.");
-
-    let db_file = "benchmark.db";
-    let disk_manager_os_cache = match DiskManager::new(db_file, false) {
-        Ok(dm) => Arc::new(dm),
-        Err(e) => {
-            eprintln!("Failed to create disk manager: {}", e);
-            return;
-        }
-    };
-
-    let disk_manager_direct_io = match DiskManager::new(db_file, true) {
-        Ok(dm) => Arc::new(dm),
-        Err(e) => {
-            eprintln!("Failed to create disk manager: {}", e);
-            return;
-        }
-    };
-
-    let concurrent_bpm_os_cache = Arc::new(ConcurrentBufferPoolManager::new(100, disk_manager_os_cache.clone()));
-    let actor_bpm_os_cache = Arc::new(ActorBufferPoolManager::new(100, disk_manager_os_cache.clone()));
-    let concurrent_bpm_direct_io= Arc::new(ConcurrentBufferPoolManager::new(100, disk_manager_direct_io.clone()));
-    let actor_bpm_direct_io= Arc::new(ActorBufferPoolManager::new(100, disk_manager_direct_io.clone()));
-
-    let concurrent_impl_results = BenchmarkResult {
-        concurrent_write: run_benchmark(concurrent_bpm_os_cache.clone(), BenchmarkType::Write),
-        concurrent_read: run_benchmark(concurrent_bpm_os_cache.clone(), BenchmarkType::Read),
-    };
-
-    let actor_impl_results = BenchmarkResult {
-        concurrent_write: run_benchmark(actor_bpm_os_cache.clone(), BenchmarkType::Write),
-        concurrent_read: run_benchmark(actor_bpm_os_cache.clone(), BenchmarkType::Read),
-    };
-
-    let concurrent_impl_results_direct_io = BenchmarkResult {
-        concurrent_write: run_benchmark(concurrent_bpm_direct_io.clone(), BenchmarkType::Write),
-        concurrent_read: run_benchmark(concurrent_bpm_direct_io.clone(), BenchmarkType::Read),
-    };
-
-    let actor_impl_results_direct_io = BenchmarkResult {
-        concurrent_write: run_benchmark(actor_bpm_direct_io.clone(), BenchmarkType::Write),
-        concurrent_read: run_benchmark(actor_bpm_direct_io.clone(), BenchmarkType::Read),
-    };
-
-    println!("\n--- Benchmark Results ---");
-    println!("| Implementation             | Direct I/O | Write Time      | Read Time       |");
-    println!("|----------------------------|------------|-----------------|-----------------|");
-    println!("| ConcurrentBufferPoolManager| {:<10?} | {:<15?} | {:<15?} |", true, concurrent_impl_results_direct_io.concurrent_write, concurrent_impl_results_direct_io.concurrent_read);
-    println!("| ConcurrentBufferPoolManager| {:<10?} | {:<15?} | {:<15?} |", false, concurrent_impl_results.concurrent_write, concurrent_impl_results.concurrent_read);
-    println!("| ActorBufferPoolManager     | {:<10?} | {:<15?} | {:<15?} |", true, actor_impl_results_direct_io.concurrent_write, actor_impl_results_direct_io.concurrent_read);
-    println!("| ActorBufferPoolManager     | {:<10?} | {:<15?} | {:<15?} |", false, actor_impl_results.concurrent_write, actor_impl_results.concurrent_read);
-
-    std::fs::remove_file(db_file).unwrap();
-}
-
-fn run_benchmark(bpm: Arc<dyn BufferPoolManager>, benchmark_type: BenchmarkType) -> Duration {
-    const NUM_PAGES: usize = 1000;
-
-    match benchmark_type {
-        BenchmarkType::Write => {
-            let start = Instant::now();
-            for _ in 0..NUM_PAGES {
-                if let Err(e) = bpm.new_page() {
-                    eprintln!("Failed to create new page: {:?}", e);
-                    return Duration::ZERO;
+    group.bench_function("new_page", |b| {
+        b.iter_custom(|iters| {
+            let start = std::time::Instant::now();
+            for _i in 0..iters {
+                // Create a fresh BPM for each iteration to avoid state interference
+                // and to measure the cost of BPM creation if it's significant.
+                // The DB file is created by disk_manager
+                let current_disk_manager = setup_disk_manager(&format!("{}_write_{}.db", id, _i), use_direct_io);
+                let current_bpm = bpm_factory(current_disk_manager.clone(), POOL_SIZE);
+                for _ in 0..black_box(NUM_PAGES) {
+                    let _page = black_box(current_bpm.new_page().unwrap());
                 }
+                black_box(current_bpm.flush_all_pages().unwrap());
+                let _ = fs::remove_file(format!("{}_write_{}.db", id, _i)); // Clean up this iteration's file
             }
             start.elapsed()
-        }
-        BenchmarkType::Read => {
-            let mut page_ids = Vec::new();
-            for _ in 0..NUM_PAGES {
-                match bpm.new_page() {
-                    Ok(guard) => {
-                        page_ids.push(guard.page_id());
-                    }
-                    Err(e) => {
-                        eprintln!("Failed to create new page: {:?}", e);
-                        return Duration::ZERO;
-                    }
-                }
-            }
-            bpm.flush_all_pages().unwrap();
+        });
+    });
+    group.finish();
+}
 
-            let start = Instant::now();
-            for &page_id in &page_ids {
-                if let Err(e) = bpm.fetch_page(page_id) {
-                    eprintln!("Failed to fetch page {}: {:?}", page_id, e);
-                }
-            }
-            start.elapsed()
-        }
+// Benchmark function for reading pages
+fn bench_read_pages<B: BufferPoolManager + 'static>(
+    c: &mut Criterion,
+    id: &str,
+    bpm_factory: impl Fn(Arc<DiskManager>, usize) -> Arc<B>,
+    use_direct_io: bool,
+) {
+    let mut group = c.benchmark_group(format!("Read Pages - {}", id));
+    group.sample_size(10); // Smaller sample size
+
+    let db_file = format!("{}_read.db", id);
+    let disk_manager = setup_disk_manager(&db_file, use_direct_io);
+    let bpm = bpm_factory(disk_manager.clone(), POOL_SIZE);
+    let mut page_ids = Vec::with_capacity(NUM_PAGES);
+    for _ in 0..NUM_PAGES {
+        let page = bpm.new_page().unwrap();
+        page_ids.push(page.page_id());
     }
+    bpm.flush_all_pages().unwrap(); // Ensure all pages are written to disk
+    
+    group.bench_function("fetch_page", |b| {
+        b.iter(|| {
+            // For reads, we can use the same BPM and just fetch pages
+            for &page_id in black_box(&page_ids) {
+                let _page = black_box(bpm.fetch_page(page_id).unwrap());
+            }
+        });
+    });
+    group.finish();
+
+    // Cleanup after all read benchmarks for this group
+    let _ = fs::remove_file(db_file);
 }
+
+
+fn bpm_benchmarks(c: &mut Criterion) {
+    bench_write_pages(c, "ConcurrentBPM_OSCache", |dm, ps| Arc::new(ConcurrentBufferPoolManager::new(ps, dm)), false);
+    bench_write_pages(c, "ConcurrentBPM_DirectIO", |dm, ps| Arc::new(ConcurrentBufferPoolManager::new(ps, dm)), true);
+    bench_write_pages(c, "ActorBPM_OSCache", |dm, ps| Arc::new(ActorBufferPoolManager::new(ps, dm)), false);
+    bench_write_pages(c, "ActorBPM_DirectIO", |dm, ps| Arc::new(ActorBufferPoolManager::new(ps, dm)), true);
+
+    bench_read_pages(c, "ConcurrentBPM_OSCache", |dm, ps| Arc::new(ConcurrentBufferPoolManager::new(ps, dm)), false);
+    bench_read_pages(c, "ConcurrentBPM_DirectIO", |dm, ps| Arc::new(ConcurrentBufferPoolManager::new(ps, dm)), true);
+    bench_read_pages(c, "ActorBPM_OSCache", |dm, ps| Arc::new(ActorBufferPoolManager::new(ps, dm)), false);
+    bench_read_pages(c, "ActorBPM_DirectIO", |dm, ps| Arc::new(ActorBufferPoolManager::new(ps, dm)), true);
+}
+
+criterion_group!{
+    name = benches;
+    config = Criterion::default().measurement_time(std::time::Duration::from_secs(10));
+    targets = bpm_benchmarks
+}
+criterion_main!(benches);

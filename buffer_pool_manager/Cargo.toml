@@ -6,6 +6,11 @@ edition = "2021"
 [dependencies]
 libc = "0.2"
 
+[dev-dependencies]
+test-case = "3.3.1"
+criterion = "0.5.1"
+ctrlc = "3.4.4" # Added for Ctrl-C handler in benchmarks
+
 [[bench]]
 name = "buffer_pool_manager"
 path = "benches/buffer_pool_manager_benchmark.rs"
