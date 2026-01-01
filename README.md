@@ -33,11 +33,11 @@ This project uses Cargo, the Rust package manager and build system.
     cargo test
     ```
 
-*   **Run benchmarks (e.g., for `buffer_pool_manager`):**
+*   **Run benchmarks (e.g., for `buffer-pool-manager`):**
     ```bash
     cargo bench
     # Or for a specific benchmark:
-    # cargo bench --bench buffer_pool_manager
+    # cargo bench --bench buffer-pool-manager
     ```
 
 ## Development Conventions
