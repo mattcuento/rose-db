@@ -2,6 +2,14 @@
 
 RoseDB is an open-source toy database project, built from first principles in Rust. This project is intended for educational purposes, providing a hands-on approach to understanding database internals and serving as a platform to deepen knowledge of Rust programming.
 
+## Getting Started
+
+After cloning the RoseDB repository, initialize and update its submodules to fetch their contents:
+
+```bash
+git submodule update --init --recursive
+```
+
 ## Project Status
 
 RoseDB is currently a **work in progress**. The goal is to construct a complete database system from the ground up, starting with fundamental components.
