@@ -1,0 +1,6 @@
+[submodule "buffer-pool-manager"]
+	path = buffer-pool-manager
+	url = /Users/mcuento/Development/rose-db/buffer-pool-manager
+[submodule "storage-engine"]
+	path = storage-engine
+	url = /Users/mcuento/Development/rose-db/storage-engine
