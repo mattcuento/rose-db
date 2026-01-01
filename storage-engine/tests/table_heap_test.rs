@@ -3,8 +3,8 @@ use buffer_pool_manager::disk_manager::DiskManager;
 use std::sync::Arc;
 use std::fs;
 use buffer_pool_manager::concurrent::ConcurrentBufferPoolManager;
-use storage::table::TableHeap;
-use storage::tuple::{Column, Schema, Tuple, Type, Value};
+use storage_engine::table::TableHeap;
+use storage_engine::tuple::{Column, Schema, Tuple, Type, Value};
 
 #[test]
 fn test_table_heap_insert_get() {

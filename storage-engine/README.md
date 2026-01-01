@@ -1,6 +1,6 @@
-# storage
+# Storage Engine
 
-The `storage` crate is a core component of RoseDB, responsible for managing how data is stored and retrieved from the database. It works in conjunction with the `buffer_pool_manager` crate to provide persistent storage for table data.
+The `storage_engine` crate is a core component of RoseDB, responsible for managing how data is stored and retrieved from the database. It works in conjunction with the `buffer_pool_manager` crate to provide persistent storage for table data.
 
 ## Key Components
 
@@ -27,7 +27,7 @@ Crucially, the `Tuple` module also provides `serialize` and `deserialize` method
 
 ## How it Fits into RoseDB
 
-The `storage` crate acts as the persistence layer for RoseDB. It provides the mechanisms for:
+The `storage_engine` crate acts as the persistence layer for RoseDB. It provides the mechanisms for:
 *   Defining the structure of data (schema and tuples).
 *   Storing and retrieving individual records (tuples) efficiently across multiple disk pages.
 *   Interfacing with the `buffer_pool_manager` to ensure data is read from and written to disk correctly, while leveraging memory caching.
