@@ -110,9 +110,9 @@ mod tests {
 
         let schema = Schema {
             columns: vec![
-                Column::new("a".to_string(), Type::Integer),
-                Column::new("b".to_string(), Type::Integer),
-                Column::new("c".to_string(), Type::Integer),
+                crate::int_column("a"),
+                crate::int_column("b"),
+                crate::int_column("c"),
             ],
         };
 

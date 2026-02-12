@@ -56,18 +56,12 @@ impl Executor for SeqScanExecutor {
             let slot_count = header.slot_count;
 
             // Try to get a tuple from the current slot
-            while self.current_slot < slot_count {
+            if self.current_slot < slot_count {
                 let slot = self.current_slot;
                 self.current_slot += 1;
 
-                // Get the record data
+                // Get the record data and deserialize
                 let record = slotted_page.get_record(slot);
-
-                // Skip empty slots (length 0)
-                if record.is_empty() {
-                    continue;
-                }
-
                 let tuple = Tuple::deserialize(record, &self.table_info.schema);
                 return Ok(Some(tuple));
             }
@@ -94,7 +88,7 @@ mod tests {
         let bpm = Arc::new(ActorBufferPoolManager::new(10, disk_manager));
 
         let schema = Schema {
-            columns: vec![Column::new("id".to_string(), Type::Integer)],
+            columns: vec![crate::int_column("id")],
         };
 
         let table_heap = Arc::new(TableHeap::new(bpm.clone(), schema.clone()));
@@ -116,8 +110,8 @@ mod tests {
 
         let schema = Schema {
             columns: vec![
-                Column::new("id".to_string(), Type::Integer),
-                Column::new("name".to_string(), Type::Varchar(50)),
+                crate::int_column("id"),
+                crate::varchar_column("name", 50),
             ],
         };
 

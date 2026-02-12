@@ -66,7 +66,7 @@ mod tests {
         let bpm = Arc::new(ActorBufferPoolManager::new(10, disk_manager));
 
         let schema = Schema {
-            columns: vec![Column::new("id".to_string(), Type::Integer)],
+            columns: vec![crate::int_column("id")],
         };
 
         let table_heap = Arc::new(TableHeap::new(bpm.clone(), schema.clone()));

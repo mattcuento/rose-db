@@ -59,8 +59,8 @@ mod tests {
 
         let schema = Schema {
             columns: vec![
-                Column::new("id".to_string(), Type::Integer),
-                Column::new("name".to_string(), Type::Varchar(50)),
+                crate::int_column("id"),
+                crate::varchar_column("name", 50),
             ],
         };
 
