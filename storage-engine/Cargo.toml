@@ -1,7 +1,0 @@
-[package]
-name = "storage_engine"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-buffer_pool_manager = { path = "../buffer-pool-manager" }
