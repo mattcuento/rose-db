@@ -3,4 +3,5 @@ resolver = "2"
 members = [
     "storage-engine",
     "buffer-pool-manager",
+    "query-engine",
 ]
