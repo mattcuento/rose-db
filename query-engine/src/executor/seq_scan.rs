@@ -77,37 +77,45 @@ impl Executor for SeqScanExecutor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use buffer_pool_manager::actor::ActorBufferPoolManager;
     use buffer_pool_manager::api::BufferPoolManager;
+    use buffer_pool_manager::concurrent::ConcurrentBufferPoolManager;
     use buffer_pool_manager::disk_manager::DiskManager;
+    use std::path::Path;
     use storage_engine::table::TableHeap;
-    use storage_engine::tuple::{Column, Type, Value};
+    use storage_engine::tuple::Value;
+
+    const TABLE_ID: u32 = 1;
+
+    fn setup(dir: &str) -> Arc<ConcurrentBufferPoolManager> {
+        let dm = Arc::new(DiskManager::new(Path::new(dir), false).unwrap());
+        dm.register_table(TABLE_ID, "t").unwrap();
+        Arc::new(ConcurrentBufferPoolManager::new(10, dm))
+    }
 
     #[test]
     fn test_seq_scan_empty_table() {
-        let disk_manager = Arc::new(DiskManager::new("test_seq_scan_empty.db", false).unwrap());
-        let bpm = Arc::new(ActorBufferPoolManager::new(10, disk_manager));
+        let dir = "test_seq_scan_empty_dir";
+        let bpm = setup(dir);
 
         let schema = Schema {
             columns: vec![crate::int_column("id")],
         };
 
-        let table_heap = Arc::new(TableHeap::new(bpm.clone(), schema.clone()));
+        let table_heap = Arc::new(TableHeap::new(bpm.clone(), schema.clone(), TABLE_ID));
         let table_info = Arc::new(TableInfo::new(1, "test".to_string(), schema, table_heap));
 
         let mut executor = SeqScanExecutor::new(table_info);
         executor.init().unwrap();
 
-        // Empty table should return None
         assert!(executor.next().unwrap().is_none());
 
-        std::fs::remove_file("test_seq_scan_empty.db").unwrap();
+        std::fs::remove_dir_all(dir).unwrap();
     }
 
     #[test]
     fn test_seq_scan_with_data() {
-        let disk_manager = Arc::new(DiskManager::new("test_seq_scan_data.db", false).unwrap());
-        let bpm = Arc::new(ActorBufferPoolManager::new(10, disk_manager));
+        let dir = "test_seq_scan_data_dir";
+        let bpm = setup(dir);
 
         let schema = Schema {
             columns: vec![
@@ -116,9 +124,8 @@ mod tests {
             ],
         };
 
-        let table_heap = Arc::new(TableHeap::new(bpm.clone(), schema.clone()));
+        let table_heap = Arc::new(TableHeap::new(bpm.clone(), schema.clone(), TABLE_ID));
 
-        // Insert some tuples
         table_heap.insert_tuple(&Tuple {
             values: vec![Value::Integer(1), Value::Varchar("Alice".to_string())],
         });
@@ -129,9 +136,6 @@ mod tests {
             values: vec![Value::Integer(3), Value::Varchar("Charlie".to_string())],
         });
 
-        // Sync to ensure all unpin messages are processed
-        bpm.sync();
-        // Flush to ensure all writes are persisted
         bpm.flush_all_pages().unwrap();
 
         let table_info = Arc::new(TableInfo::new(1, "test".to_string(), schema, table_heap));
@@ -139,7 +143,6 @@ mod tests {
         let mut executor = SeqScanExecutor::new(table_info);
         executor.init().unwrap();
 
-        // Collect all tuples
         let mut tuples = Vec::new();
         while let Some(tuple) = executor.next().unwrap() {
             tuples.push(tuple);
@@ -150,6 +153,6 @@ mod tests {
         assert_eq!(tuples[1].values[0], Value::Integer(2));
         assert_eq!(tuples[2].values[0], Value::Integer(3));
 
-        std::fs::remove_file("test_seq_scan_data.db").unwrap();
+        std::fs::remove_dir_all(dir).unwrap();
     }
 }

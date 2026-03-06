@@ -198,7 +198,9 @@ mod tests {
 
     #[test]
     fn test_dataframe_insert_and_collect() {
-        let db = Database::open("test_dataframe.db").unwrap();
+        let path = "test_dataframe_dir";
+        let _ = std::fs::remove_dir_all(path);
+        let db = Database::open(path).unwrap();
 
         let schema = storage_engine::tuple::Schema {
             columns: vec![
@@ -241,13 +243,14 @@ mod tests {
 
         assert_eq!(results.len(), 2);
 
-        std::fs::remove_file("test_dataframe.db").unwrap();
-        let _ = std::fs::remove_file("test_dataframe.db.catalog");
+        std::fs::remove_dir_all(path).unwrap();
     }
 
     #[test]
     fn test_dataframe_select_and_limit() {
-        let db = Database::open("test_dataframe2.db").unwrap();
+        let path = "test_dataframe2_dir";
+        let _ = std::fs::remove_dir_all(path);
+        let db = Database::open(path).unwrap();
 
         let schema = storage_engine::tuple::Schema {
             columns: vec![
@@ -287,7 +290,6 @@ mod tests {
         assert_eq!(results[0].values.len(), 1); // Only column b
         assert_eq!(results[0].values[0], storage_engine::tuple::Value::Integer(10));
 
-        std::fs::remove_file("test_dataframe2.db").unwrap();
-        let _ = std::fs::remove_file("test_dataframe2.db.catalog");
+        std::fs::remove_dir_all(path).unwrap();
     }
 }

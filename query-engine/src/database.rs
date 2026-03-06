@@ -3,8 +3,10 @@
 use crate::catalog::Catalog;
 use crate::dataframe::DataFrame;
 use crate::Result;
-use buffer_pool_manager::actor::ActorBufferPoolManager;
+use buffer_pool_manager::api::BufferPoolManager;
+use buffer_pool_manager::concurrent::ConcurrentBufferPoolManager;
 use buffer_pool_manager::disk_manager::DiskManager;
+use std::path::Path;
 use std::sync::Arc;
 use storage_engine::tuple::Schema;
 
@@ -16,12 +18,19 @@ pub struct Database {
 }
 
 impl Database {
-    /// Opens or creates a database at the specified path.
+    /// Opens or creates a database at the specified directory path.
+    ///
+    /// The directory is created if it does not exist. Inside it, the catalog is
+    /// stored as `catalog` and each table gets its own subdirectory with segment files.
     pub fn open(path: &str) -> Result<Self> {
-        let catalog_path = format!("{}.catalog", path);
-        let disk_manager = Arc::new(DiskManager::new(path, false)?);
-        let bpm = Arc::new(ActorBufferPoolManager::new(100, disk_manager));
-        let catalog = Arc::new(Catalog::open(bpm, catalog_path)?);
+        let db_dir = Path::new(path);
+        std::fs::create_dir_all(db_dir)?;
+
+        let disk_manager = Arc::new(DiskManager::new(db_dir, false)?);
+        let bpm: Arc<dyn BufferPoolManager> =
+            Arc::new(ConcurrentBufferPoolManager::new(1000, disk_manager.clone()));
+        let catalog_path = db_dir.join("catalog").to_string_lossy().into_owned();
+        let catalog = Arc::new(Catalog::open(bpm, disk_manager, catalog_path)?);
 
         Ok(Self { catalog })
     }
@@ -49,8 +58,6 @@ impl Database {
     }
 
     /// Flushes all dirty pages to disk.
-    ///
-    /// This is useful in tests to ensure all writes are persisted before reading.
     pub fn flush(&self) -> Result<()> {
         self.catalog.flush_all_pages()
     }
@@ -59,43 +66,37 @@ impl Database {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use storage_engine::tuple::{Column, Type, Tuple, Value};
+    use storage_engine::tuple::{Tuple, Value};
 
     #[test]
     fn test_database_create_and_list_tables() {
-        let db = Database::open("test_database.db").unwrap();
+        let path = "test_database_dir";
+        let _ = std::fs::remove_dir_all(path);
+        let db = Database::open(path).unwrap();
 
-        let schema = Schema {
+        let schema = crate::Schema {
             columns: vec![
                 crate::int_column("id"),
                 crate::varchar_column("name", 50),
             ],
         };
 
-        // Create table
         db.create_table("users", schema).unwrap();
 
-        // List tables
         let tables = db.list_tables();
         assert!(tables.contains(&"users".to_string()));
 
-        // Drop table
         db.drop_table("users").unwrap();
 
-        std::fs::remove_file("test_database.db").unwrap();
-        let _ = std::fs::remove_file("test_database.db.catalog");
+        std::fs::remove_dir_all(path).unwrap();
     }
 
     #[test]
     fn test_catalog_persists_across_reopen() {
-        let db_path = "test_persistence.db";
-        let catalog_path = "test_persistence.db.catalog";
+        let path = "test_persistence_dir";
+        let _ = std::fs::remove_dir_all(path);
 
-        // Clean up any leftover files from previous runs
-        let _ = std::fs::remove_file(db_path);
-        let _ = std::fs::remove_file(catalog_path);
-
-        let schema = Schema {
+        let schema = crate::Schema {
             columns: vec![
                 crate::int_column("id"),
                 crate::varchar_column("name", 50),
@@ -104,7 +105,7 @@ mod tests {
 
         // Phase 1: create table, insert a row, close database
         {
-            let db = Database::open(db_path).unwrap();
+            let db = Database::open(path).unwrap();
             db.create_table("users", schema).unwrap();
             let table_info = db.catalog.get_table("users").unwrap();
             table_info.table_heap.insert_tuple(&Tuple {
@@ -115,7 +116,7 @@ mod tests {
 
         // Phase 2: reopen and assert table + data survive
         {
-            let db = Database::open(db_path).unwrap();
+            let db = Database::open(path).unwrap();
 
             let tables = db.list_tables();
             assert!(tables.contains(&"users".to_string()), "table should persist after reopen");
@@ -131,7 +132,6 @@ mod tests {
             assert_eq!(tuple.values[1], Value::Varchar("Alice".to_string()));
         }
 
-        let _ = std::fs::remove_file(db_path);
-        let _ = std::fs::remove_file(catalog_path);
+        std::fs::remove_dir_all(path).unwrap();
     }
 }

@@ -54,34 +54,34 @@ mod tests {
     use super::*;
     use crate::catalog::TableInfo;
     use crate::executor::SeqScanExecutor;
-    use buffer_pool_manager::actor::ActorBufferPoolManager;
     use buffer_pool_manager::api::BufferPoolManager;
+    use buffer_pool_manager::concurrent::ConcurrentBufferPoolManager;
     use buffer_pool_manager::disk_manager::DiskManager;
+    use std::path::Path;
     use storage_engine::table::TableHeap;
     use storage_engine::tuple::{Column, Schema, Type, Value};
     use std::sync::Arc;
 
     #[test]
     fn test_limit_executor() {
-        let disk_manager = Arc::new(DiskManager::new("test_limit.db", false).unwrap());
-        let bpm = Arc::new(ActorBufferPoolManager::new(10, disk_manager));
+        let dir = "test_limit_dir";
+        let table_id: u32 = 1;
+        let dm = Arc::new(DiskManager::new(Path::new(dir), false).unwrap());
+        dm.register_table(table_id, "t").unwrap();
+        let bpm = Arc::new(ConcurrentBufferPoolManager::new(10, dm));
 
         let schema = Schema {
             columns: vec![crate::int_column("id")],
         };
 
-        let table_heap = Arc::new(TableHeap::new(bpm.clone(), schema.clone()));
+        let table_heap = Arc::new(TableHeap::new(bpm.clone(), schema.clone(), table_id));
 
-        // Insert 5 tuples
         for i in 1..=5 {
             table_heap.insert_tuple(&Tuple {
                 values: vec![Value::Integer(i)],
             });
         }
 
-        // Sync to ensure all unpin messages are processed
-        bpm.sync();
-        // Flush to ensure all writes are persisted
         bpm.flush_all_pages().unwrap();
 
         let table_info = Arc::new(TableInfo::new(1, "test".to_string(), schema, table_heap));
@@ -103,6 +103,6 @@ mod tests {
         assert_eq!(results[1].values[0], Value::Integer(2));
         assert_eq!(results[2].values[0], Value::Integer(3));
 
-        std::fs::remove_file("test_limit.db").unwrap();
+        std::fs::remove_dir_all(dir).unwrap();
     }
 }

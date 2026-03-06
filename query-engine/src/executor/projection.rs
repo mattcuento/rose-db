@@ -96,17 +96,21 @@ mod tests {
     use crate::catalog::TableInfo;
     use crate::executor::SeqScanExecutor;
     use crate::expression::{col, lit, Expression};
-    use buffer_pool_manager::actor::ActorBufferPoolManager;
     use buffer_pool_manager::api::BufferPoolManager;
+    use buffer_pool_manager::concurrent::ConcurrentBufferPoolManager;
     use buffer_pool_manager::disk_manager::DiskManager;
+    use std::path::Path;
     use storage_engine::table::TableHeap;
     use storage_engine::tuple::Value as StorageValue;
     use std::sync::Arc;
 
     #[test]
     fn test_projection_executor() {
-        let disk_manager = Arc::new(DiskManager::new("test_projection.db", false).unwrap());
-        let bpm = Arc::new(ActorBufferPoolManager::new(10, disk_manager));
+        let dir = "test_projection_dir";
+        let table_id: u32 = 1;
+        let dm = Arc::new(DiskManager::new(Path::new(dir), false).unwrap());
+        dm.register_table(table_id, "t").unwrap();
+        let bpm = Arc::new(ConcurrentBufferPoolManager::new(10, dm));
 
         let schema = Schema {
             columns: vec![
@@ -116,9 +120,8 @@ mod tests {
             ],
         };
 
-        let table_heap = Arc::new(TableHeap::new(bpm.clone(), schema.clone()));
+        let table_heap = Arc::new(TableHeap::new(bpm.clone(), schema.clone(), table_id));
 
-        // Insert test data
         table_heap.insert_tuple(&Tuple {
             values: vec![
                 StorageValue::Integer(1),
@@ -134,9 +137,6 @@ mod tests {
             ],
         });
 
-        // Sync to ensure all unpin messages are processed
-        bpm.sync();
-        // Flush to ensure all writes are persisted
         bpm.flush_all_pages().unwrap();
 
         let table_info = Arc::new(TableInfo::new(1, "test".to_string(), schema.clone(), table_heap));
@@ -173,6 +173,6 @@ mod tests {
         assert_eq!(results[1].values[0], StorageValue::Integer(20));
         assert_eq!(results[1].values[1], StorageValue::Integer(202));
 
-        std::fs::remove_file("test_projection.db").unwrap();
+        std::fs::remove_dir_all(dir).unwrap();
     }
 }
