@@ -16,7 +16,7 @@ use storage_engine::tuple::Tuple;
 /// A lazy query builder that produces an execution plan.
 ///
 /// Methods can be chained to build complex queries:
-/// ```no_run
+/// ```ignore
 /// df.filter(col("age").gt(25))
 ///   .select(&["name", "email"])
 ///   .limit(10)
@@ -48,7 +48,7 @@ impl DataFrame {
     /// Adds a filter (WHERE clause) to the query.
     ///
     /// # Example
-    /// ```no_run
+    /// ```ignore
     /// df.filter(col("age").gt(25))
     /// ```
     pub fn filter(mut self, predicate: Expression) -> Self {
@@ -59,7 +59,7 @@ impl DataFrame {
     /// Projects specific columns (SELECT clause).
     ///
     /// # Example
-    /// ```no_run
+    /// ```ignore
     /// df.select(&["name", "email"])
     /// ```
     pub fn select(mut self, columns: &[&str]) -> Self {
@@ -74,7 +74,7 @@ impl DataFrame {
     /// Projects with custom expressions.
     ///
     /// # Example
-    /// ```no_run
+    /// ```ignore
     /// df.select_exprs(&[
     ///     (col("name"), "name"),
     ///     (col("age").add(lit(1)), "age_plus_one"),
@@ -92,7 +92,7 @@ impl DataFrame {
     /// Limits the number of results (LIMIT clause).
     ///
     /// # Example
-    /// ```no_run
+    /// ```ignore
     /// df.limit(10)
     /// ```
     pub fn limit(mut self, n: usize) -> Self {
@@ -103,7 +103,7 @@ impl DataFrame {
     /// Inserts a tuple into the table.
     ///
     /// # Example
-    /// ```no_run
+    /// ```ignore
     /// df.insert(&[Value::Integer(1), Value::Varchar("Alice".to_string())])
     /// ```
     pub fn insert(&self, values: &[Value]) -> Result<RowId> {

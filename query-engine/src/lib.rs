@@ -6,21 +6,24 @@
 //! # Example
 //!
 //! ```no_run
-//! use query_engine::Database;
+//! use query_engine::{Database, Schema, int_column, varchar_column, col, lit};
 //!
+//! # fn main() -> Result<(), Box<dyn std::error::Error>> {
 //! let db = Database::open("mydb.db")?;
 //!
 //! // Create table
-//! db.create_table("users", schema! {
-//!     "id" => Type::Integer,
-//!     "name" => Type::Varchar(50),
-//! })?;
+//! let schema = Schema {
+//!     columns: vec![int_column("id"), varchar_column("name", 50)],
+//! };
+//! db.create_table("users", schema)?;
 //!
 //! // Query with DataFrame API
-//! let results = db.table("users")
-//!     .filter(col("id").gt(10))
+//! let results = db.table("users")?
+//!     .filter(col("id").gt(lit(10)))
 //!     .select(&["name"])
 //!     .collect()?;
+//! # Ok(())
+//! # }
 //! ```
 
 pub mod catalog;
