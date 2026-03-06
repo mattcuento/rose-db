@@ -4,7 +4,7 @@
 
 use super::Executor;
 use crate::catalog::TableInfo;
-use crate::{QueryError, Result};
+use crate::Result;
 use buffer_pool_manager::api::{PageId, INVALID_PAGE_ID};
 use buffer_pool_manager::page::SlottedPage;
 use std::ops::DerefMut;
@@ -78,6 +78,7 @@ impl Executor for SeqScanExecutor {
 mod tests {
     use super::*;
     use buffer_pool_manager::actor::ActorBufferPoolManager;
+    use buffer_pool_manager::api::BufferPoolManager;
     use buffer_pool_manager::disk_manager::DiskManager;
     use storage_engine::table::TableHeap;
     use storage_engine::tuple::{Column, Type, Value};
@@ -127,6 +128,11 @@ mod tests {
         table_heap.insert_tuple(&Tuple {
             values: vec![Value::Integer(3), Value::Varchar("Charlie".to_string())],
         });
+
+        // Sync to ensure all unpin messages are processed
+        bpm.sync();
+        // Flush to ensure all writes are persisted
+        bpm.flush_all_pages().unwrap();
 
         let table_info = Arc::new(TableInfo::new(1, "test".to_string(), schema, table_heap));
 

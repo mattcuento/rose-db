@@ -270,6 +270,7 @@ impl Expression {
     }
 
     /// Creates an addition operation: `self + other`
+    #[allow(clippy::should_implement_trait)]
     pub fn add(self, other: Expression) -> Expression {
         Expression::BinaryOp {
             left: Box::new(self),

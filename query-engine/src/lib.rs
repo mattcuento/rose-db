@@ -32,7 +32,7 @@ mod dataframe;
 
 pub use database::Database;
 pub use dataframe::DataFrame;
-pub use expression::{col, lit, Expression};
+pub use expression::{col, lit, lit_str, Expression};
 pub use types::Value;
 
 // Re-export commonly used types from storage_engine

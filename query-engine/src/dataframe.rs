@@ -4,7 +4,7 @@
 
 use crate::catalog::TableInfo;
 use crate::executor::{
-    BoxedExecutor, Executor, FilterExecutor, LimitExecutor, ProjectionExecutor, SeqScanExecutor,
+    BoxedExecutor, FilterExecutor, LimitExecutor, ProjectionExecutor, SeqScanExecutor,
 };
 use crate::expression::{col, Expression};
 use crate::types::Value;
@@ -228,6 +228,9 @@ mod tests {
         ])
         .unwrap();
 
+        // Flush to ensure all writes are persisted
+        db.flush().unwrap();
+
         // Query: SELECT * FROM users WHERE age > 22
         let results = db
             .table("users")
@@ -239,6 +242,7 @@ mod tests {
         assert_eq!(results.len(), 2);
 
         std::fs::remove_file("test_dataframe.db").unwrap();
+        let _ = std::fs::remove_file("test_dataframe.db.catalog");
     }
 
     #[test]
@@ -267,6 +271,9 @@ mod tests {
             .unwrap();
         }
 
+        // Flush to ensure all writes are persisted
+        db.flush().unwrap();
+
         // Query: SELECT b FROM test LIMIT 3
         let results = db
             .table("test")
@@ -281,5 +288,6 @@ mod tests {
         assert_eq!(results[0].values[0], storage_engine::tuple::Value::Integer(10));
 
         std::fs::remove_file("test_dataframe2.db").unwrap();
+        let _ = std::fs::remove_file("test_dataframe2.db.catalog");
     }
 }

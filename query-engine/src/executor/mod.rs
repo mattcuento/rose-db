@@ -2,7 +2,7 @@
 //!
 //! Each executor implements the Executor trait and can be composed to form query plans.
 
-use crate::{QueryError, Result};
+use crate::Result;
 use storage_engine::tuple::{Schema, Tuple};
 
 pub mod seq_scan;

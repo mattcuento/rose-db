@@ -55,6 +55,7 @@ mod tests {
     use crate::catalog::TableInfo;
     use crate::executor::SeqScanExecutor;
     use buffer_pool_manager::actor::ActorBufferPoolManager;
+    use buffer_pool_manager::api::BufferPoolManager;
     use buffer_pool_manager::disk_manager::DiskManager;
     use storage_engine::table::TableHeap;
     use storage_engine::tuple::{Column, Schema, Type, Value};
@@ -77,6 +78,11 @@ mod tests {
                 values: vec![Value::Integer(i)],
             });
         }
+
+        // Sync to ensure all unpin messages are processed
+        bpm.sync();
+        // Flush to ensure all writes are persisted
+        bpm.flush_all_pages().unwrap();
 
         let table_info = Arc::new(TableInfo::new(1, "test".to_string(), schema, table_heap));
 

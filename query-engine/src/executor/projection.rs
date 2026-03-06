@@ -4,7 +4,6 @@
 
 use super::{BoxedExecutor, Executor};
 use crate::expression::Expression;
-use crate::types::Value;
 use crate::{QueryError, Result};
 use storage_engine::tuple::{Column, Schema, Tuple, Type, Value as StorageValue};
 
@@ -98,6 +97,7 @@ mod tests {
     use crate::executor::SeqScanExecutor;
     use crate::expression::{col, lit, Expression};
     use buffer_pool_manager::actor::ActorBufferPoolManager;
+    use buffer_pool_manager::api::BufferPoolManager;
     use buffer_pool_manager::disk_manager::DiskManager;
     use storage_engine::table::TableHeap;
     use storage_engine::tuple::Value as StorageValue;
@@ -133,6 +133,11 @@ mod tests {
                 StorageValue::Integer(200),
             ],
         });
+
+        // Sync to ensure all unpin messages are processed
+        bpm.sync();
+        // Flush to ensure all writes are persisted
+        bpm.flush_all_pages().unwrap();
 
         let table_info = Arc::new(TableInfo::new(1, "test".to_string(), schema.clone(), table_heap));
 
